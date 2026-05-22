@@ -83,6 +83,7 @@ router.post("/task", verifyToken, upload.single("image"), async (req, res) => {
     }
 
     const task = await Task.create({
+      userId: req.user.id,
       taskType,
       data: taskData || {},
     });
@@ -143,7 +144,7 @@ router.get("/tasks", verifyToken, async (req, res) => {
 
   try {
 
-    const tasks = await Task.find();
+    const tasks = await Task.find({ userId: req.user.id });
 
     res.json(tasks);
 
@@ -165,6 +166,14 @@ router.get("/task/:id", verifyToken, async (req, res) => {
   try {
 
     const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (task.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized access to task" });
+    }
 
     res.json(task);
 
@@ -207,10 +216,15 @@ if (useRedis && taskQueue) {
 // Delete Task
 router.delete("/task/:id", verifyToken, async (req, res) => {
   try {
-    const deleted = await Task.findByIdAndDelete(req.params.id);
-    if (!deleted) {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
+    if (task.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized to delete task" });
+    }
+
+    await Task.findByIdAndDelete(req.params.id);
     res.json({ message: "Task deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -220,6 +234,14 @@ router.delete("/task/:id", verifyToken, async (req, res) => {
 // Update Task
 router.patch("/task/:id", verifyToken, upload.single("image"), async (req, res) => {
   try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    if (task.userId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized to update task" });
+    }
+
     const { taskType, data } = req.body;
     const updates = {};
 

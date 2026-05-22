@@ -23,15 +23,15 @@ function TaskForm({ fetchTasks }) {
     e.preventDefault();
     setError("");
 
-    // Gmail validation for email task
+    // Email validation for email task
     if (taskType === "email") {
       if (!value.trim()) {
-        setError("Please enter email");
+        setError("Please enter a valid email");
         return;
       }
-      const gmailRegex = /^[^\s@]+@gmail\.com$/i;
-      if (!gmailRegex.test(value)) {
-        setError("Please enter email");
+      const emailRegex = /^[^\s@]+@(gmail\.com|anurag\.edu\.in)$/i;
+      if (!emailRegex.test(value)) {
+        setError("Please enter a valid @gmail.com or @anurag.edu.in email");
         return;
       }
     }
@@ -122,7 +122,7 @@ function TaskForm({ fetchTasks }) {
         <>
           <input
             type="email"
-            placeholder="Enter Gmail "
+            placeholder="Enter Email"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className="w-full border p-3 rounded-lg mb-4"

@@ -87,7 +87,7 @@ function EditTask() {
             <input
               type="email"
               placeholder="Email address"
-              {...register("email", { required: "Email is required", pattern: { value: /^[^\s@]+@gmail\.com$/i, message: "Email must end with @gmail.com" } })}
+              {...register("email", { required: "Email is required", pattern: { value: /^[^\s@]+@(gmail\.com|anurag\.edu\.in)$/i, message: "Email must end with @gmail.com or @anurag.edu.in" } })}
               className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition"
             />
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}

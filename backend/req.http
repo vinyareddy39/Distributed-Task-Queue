@@ -1,0 +1,55 @@
+@token=PASTE_YOUR_JWT_TOKEN_HERE
+
+
+
+### Create Email Task
+POST http://localhost:5000/api/task
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "taskType": "email",
+  "data": {
+    "email": "test@gmail.com"
+  }
+}
+
+
+
+### Create Image Task
+POST http://localhost:5000/api/task
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "taskType": "image",
+  "data": {
+    "imageName": "photo.png"
+  }
+}
+
+
+
+### Create Report Task
+POST http://localhost:5000/api/task
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+  "taskType": "report",
+  "data": {
+    "reportName": "sales-report"
+  }
+}
+
+
+
+### Get All Tasks
+GET http://localhost:5000/api/tasks
+Authorization: {{token}}
+
+
+
+### Get Task By ID
+GET http://localhost:5000/api/task/PASTE_TASK_ID_HERE
+Authorization: {{token}}

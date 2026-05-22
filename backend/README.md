@@ -1,57 +1,48 @@
-#  Distributed Task Queue - Backend
+# Distributed Task Queue - Backend
 
-The backend of the Distributed Task Queue system is built with Node.js, Express, and MongoDB. It features a scalable, asynchronous background job processing architecture utilizing Redis and Bull.
+The backend of the Distributed Task Queue system is built with Node.js, Express, and MongoDB. It features an asynchronous background job processing architecture utilizing Redis and Bull.
 
----
+## Core Concepts Covered
 
-##  Core Concepts Covered
+- RESTful API Design: Modular routing for authentication and task management.
+- Asynchronous Task Processing: Offloading heavy tasks to background workers.
+- Message Queues: Implementing Bull and Redis to queue and track tasks.
+- Multipart Data Handling: Parsing and storing uploaded image files using Multer.
+- User Authentication: Secure signups and stateless authentication using JSON Web Tokens (JWT).
+- Data Isolation: Enforcing database relationships so users can only access their own tasks.
 
-- **RESTful API Design:** Clean, modular routing with `express.Router` for authentication and task management.
-- **Asynchronous Task Processing:** Offloading heavy or long-running tasks (like image processing, email sending, or report generation) to background workers so the main API thread isn't blocked.
-- **Message Queues:** Implementing `Bull` and `Redis` to queue, retry, and track the status of distributed tasks across workers.
-- **Multipart Data Handling:** Securely parsing and storing uploaded image files using `Multer`.
-- **User Authentication:** Managing secure signups, encrypted passwords with `bcryptjs`, and stateless authentication using JSON Web Tokens (JWT).
-- **Data Isolation:** Enforcing database relationships so users can only access their own tasks.
+## Tech Stack
 
----
+- Node.js
+- Express.js
+- MongoDB and Mongoose
+- Bull and Redis
+- Multer for file uploads
+- JSON Web Tokens (JWT) and bcryptjs
 
-##  Tech Stack
+## Files
 
-- **Runtime:** Node.js
-- **Web Framework:** Express.js
-- **Database:** MongoDB
-- **ODM:** Mongoose
-- **Queue System:** Bull
-- **In-Memory Store:** Redis
-- **File Uploads:** Multer
-- **Security:** jsonwebtoken (JWT), bcryptjs, cors
+- server.js — Main Express server and middleware setup
+- models/Task.js — Database schema for tasks
+- models/User.js — Database schema for users
+- routes/authRoutes.js — API endpoints for user registration and login
+- routes/taskRoutes.js — API endpoints for task creation, retrieval, updating, and deletion
+- services/emailService.js — Logic for sending emails
+- services/imageService.js — Logic for processing images
+- services/reportService.js — Logic for generating reports
+- utils/logger.js — Utility for logging task progress
+- utils/retryHandler.js — Utility for retrying failed tasks
+- utils/verifyToken.js — Middleware to verify JWT authentication tokens
+- workers/emailWorker.js — Background worker for processing email tasks
+- workers/imageWorker.js — Background worker for processing image tasks
+- workers/reportWorker.js — Background worker for processing report tasks
 
----
+## Installation & Setup
 
-##  Project Structure
+1. Install Dependencies:
+   `npm install`
 
-```text
-backend/
-├── models/          # Database schemas (User, Task)
-├── routes/          # Express route definitions
-├── services/        # Business logic for specific workers (email, image, report)
-├── uploads/         # Local storage for image uploads
-├── utils/           # Shared utilities (JWT verification, logging, retries)
-├── workers/         # Background worker definitions for processing queues
-├── .env             # Environment variables
-└── server.js        # Main Express application entry point
-```
-
----
-
-##  Installation & Setup
-
-1. **Install Dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Configure Environment:**
+2. Configure Environment:
    Ensure you have a `.env` file in the root of the `backend` folder:
    ```env
    PORT=5000
@@ -62,26 +53,9 @@ backend/
    USE_REDIS=true
    ```
 
-3. **Start Required Services:**
-   Make sure **MongoDB** and **Redis** servers are running on your machine.
+3. Start Required Services:
+   Make sure MongoDB and Redis servers are running on your machine.
 
-4. **Run the Server:**
-   ```bash
-   npm start
-   ```
+4. Run the Server:
+   `npm start`
    The backend will now be running on `http://localhost:5000`.
-
----
-
-##  API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Registers a new user.
-- `POST /api/auth/login` - Authenticates a user and returns a JWT.
-
-### Tasks (Requires Bearer Token)
-- `POST /api/task` - Add a new task to the queue.
-- `GET /api/tasks` - Get all tasks for the logged-in user.
-- `GET /api/task/:id` - Get details for a specific task.
-- `PATCH /api/task/:id` - Update an existing task.
-- `DELETE /api/task/:id` - Delete a task.

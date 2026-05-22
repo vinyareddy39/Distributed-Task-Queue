@@ -105,15 +105,20 @@ function EditTask() {
                 />
               </div>
             )}
-            <input
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-              onChange={(e) => setImageFile(e.target.files[0] || null)}
-              className="w-full p-3 bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition"
-            />
-            {imageFile && (
-              <p className="text-sm text-zinc-500">New file: {imageFile.name}</p>
-            )}
+            <div className="relative mb-4">
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                onChange={(e) => setImageFile(e.target.files[0] || null)}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <div className="w-full border border-zinc-200 p-3 rounded-lg bg-zinc-50 text-gray-700 flex items-center justify-between">
+                <span>{imageFile ? imageFile.name : "Upload image"}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </div>
+            </div>
           </>
         )}
         {taskType === "report" && (

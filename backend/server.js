@@ -48,13 +48,19 @@ app.get("/health", (req, res) => {
 });
 
 // MongoDB Connection
-if (!process.env.MONGO_URI) {
-  console.error("❌ ERROR: MONGO_URI is undefined!");
+const mongoUri = process.env.MONGO_URI || process.env.MONGO_URL;
+if (!mongoUri) {
+  console.error("❌ ERROR: Neither MONGO_URI nor MONGO_URL is set!");
+  console.error("Available env keys:", Object.keys(process.env).filter(k => k.includes("MONGO")));
   process.exit(1);
 }
 
+// Debug: show masked URI so we can verify Render is passing the right value
+const maskedUri = mongoUri.replace(/:([^@]+)@/, ":****@");
+console.log("Connecting to MongoDB:", maskedUri);
+
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(mongoUri)
   .then(() => {
     console.log("MongoDB Connected");
   })

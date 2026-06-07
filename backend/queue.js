@@ -30,3 +30,4 @@ const taskQueue = new Bull("taskQueue", {
       }
     : redisConfig,
 });
+export default taskQueue;

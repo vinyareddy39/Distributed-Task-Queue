@@ -34,17 +34,22 @@ import reportWorker from "./workers/reportWorker.js";
 
 const WORKER_ID = `Worker-${process.pid}`; // unique ID per worker process
 
-// ─── Connect to MongoDB ──────────────────────────────────────────────────────
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log(`[${WORKER_ID}] MongoDB connected`);
-    console.log(`[${WORKER_ID}] Listening for jobs on queue "taskQueue"...`);
-  })
-  .catch((err) => {
-    console.error(`[${WORKER_ID}] MongoDB connection failed:`, err.message);
-    process.exit(1);
-  });
+// ─── Connect to MongoDB (only if not already connected) ──────────────────────
+if (mongoose.connection.readyState === 0) {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => {
+      console.log(`[${WORKER_ID}] MongoDB connected`);
+      console.log(`[${WORKER_ID}] Listening for jobs on queue "taskQueue"...`);
+    })
+    .catch((err) => {
+      console.error(`[${WORKER_ID}] MongoDB connection failed:`, err.message);
+      process.exit(1);
+    });
+} else {
+  console.log(`[${WORKER_ID}] Mongoose already connected. Sharing connection.`);
+  console.log(`[${WORKER_ID}] Listening for jobs on queue "taskQueue"...`);
+}
 
 // ─── Process Jobs from the Queue ─────────────────────────────────────────────
 // Bull automatically distributes jobs across all running workers.

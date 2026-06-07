@@ -63,6 +63,8 @@ mongoose
   .connect(mongoUri)
   .then(() => {
     console.log("MongoDB Connected");
+    // Run the worker inside the same process to stay 100% on the Free Tier (no credit card required)
+    import("./worker.js");
   })
   .catch((error) => {
     console.error("MongoDB connection error:", error.message);

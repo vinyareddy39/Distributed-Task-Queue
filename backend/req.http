@@ -1,7 +1,15 @@
-@token=PASTE_YOUR_JWT_TOKEN_HERE
+### Login to get token automatically
+# @name login
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
 
+{
+  "email": "chaituu@gmail.com",
+  "password": "123456"
+}
 
-
+###
+@token = {{login.response.body.token}}
 ### Create Email Task
 POST http://localhost:5000/api/task
 Authorization: {{token}}

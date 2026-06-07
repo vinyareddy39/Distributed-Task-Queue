@@ -14,7 +14,7 @@ const app = express();
 
 // Middleware
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim().replace(/\/$/, ""))
   : ["http://localhost:5173", "http://localhost:3000"];
 
 app.use(
@@ -22,11 +22,11 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
         return callback(null, true);
       }
 
-      callback(new Error(`CORS blocked: ${origin}`));
+      return callback(null, false);
     },
     credentials: true,
   })

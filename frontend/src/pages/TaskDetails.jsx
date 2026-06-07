@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import api from "../services/api";
@@ -9,25 +9,33 @@ import Loader from "../components/Loader";
 function TaskDetails() {
 
   const { id } = useParams();
-
   const [task, setTask] = useState(null);
 
-  useEffect(() => {
-    const fetchTask = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await api.get(`/task/${id}`, {
-          headers: {
-            Authorization: token,
-          },
-        });
-        setTask(response.data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
-    fetchTask();
+  const fetchTask = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await api.get(`/task/${id}`, {
+        headers: { Authorization: token },
+      });
+      setTask(response.data);
+    } catch (error) {
+      console.log(error);
+    }
   }, [id]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchTask();
+  }, [fetchTask]);
+
+  // Poll every 2s while task is pending or processing
+  useEffect(() => {
+    if (!task) return;
+    if (task.status !== "pending" && task.status !== "processing") return;
+
+    const interval = setInterval(fetchTask, 2000);
+    return () => clearInterval(interval);
+  }, [task, fetchTask]);
 
   const navigate = useNavigate();
 
@@ -66,7 +74,7 @@ function TaskDetails() {
             <div className="mb-4">
               <p className="mb-2">Image: {task.data.imageName}</p>
               <img
-                src={`http://localhost:5000${task.data.imagePath}`}
+                src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:5000'}${task.data.imagePath}`}
                 alt={task.data.imageName || "Uploaded image"}
                 className="max-w-full max-h-80 object-contain rounded-lg border border-gray-200"
               />

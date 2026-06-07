@@ -1,25 +1,32 @@
+/**
+ * taskRoutes.js — API Server Routes
+ *
+ * The API server's ONLY job regarding tasks:
+ *   1. Receive the HTTP request
+ *   2. Save the task to MongoDB (status: "pending")
+ *   3. Add a job to the Bull/Redis queue
+ *   4. Immediately respond to the user — does NOT wait for processing
+ *
+ * The actual processing happens in worker.js (separate process).
+ *
+ * This is the Producer side of the Producer → Queue → Consumer pattern.
+ */
+
 import express from "express";
-import Bull from "bull";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 
 import Task from "../models/Task.js";
-
 import verifyToken from "../utils/verifyToken.js";
-
-import emailWorker from "../workers/emailWorker.js";
-import imageWorker from "../workers/imageWorker.js";
-import reportWorker from "../workers/reportWorker.js";
-
-import retryHandler from "../utils/retryHandler.js";
+import taskQueue from "../queue.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Multer configuration for image uploads
+// ─── Multer (image upload to disk) ───────────────────────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, "..", "uploads"));
@@ -44,37 +51,19 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
 
-// Queue
-
-const useRedis = process.env.USE_REDIS === "true";
-let taskQueue = null;
-
-if (useRedis) {
-  taskQueue = new Bull("taskQueue", {
-    redis: {
-      host: process.env.REDIS_HOST,
-      port: process.env.REDIS_PORT,
-    },
-  });
-}
-
-
-// Create Task
-
+// ─── POST /task — Create a new task & enqueue it ─────────────────────────────
 router.post("/task", verifyToken, upload.single("image"), async (req, res) => {
-
   try {
-
     const { taskType, data } = req.body;
 
     let taskData = data;
 
-    // If data is sent as JSON string (from FormData), parse it
+    // Parse JSON string (from FormData)
     if (typeof taskData === "string") {
       try { taskData = JSON.parse(taskData); } catch { taskData = {}; }
     }
 
-    // For image tasks, use the uploaded file info
+    // For image tasks, store the uploaded file path
     if (taskType === "image" && req.file) {
       taskData = {
         imageName: req.file.originalname,
@@ -82,141 +71,73 @@ router.post("/task", verifyToken, upload.single("image"), async (req, res) => {
       };
     }
 
+    // 1. Save task to MongoDB with status "pending"
     const task = await Task.create({
       userId: req.user.id,
       taskType,
       data: taskData || {},
+      status: "pending",
     });
 
-    if (useRedis && taskQueue) {
-      await taskQueue.add({
-        taskId: task._id,
-      });
-    } else {
-      // Process task immediately in background if Redis is disabled/down
-      setTimeout(async () => {
-        try {
-          const freshTask = await Task.findById(task._id);
-          if (!freshTask) return;
+    // 2. Add job to Bull/Redis queue — worker.js will pick this up
+    const job = await taskQueue.add(
+      { taskId: task._id.toString() },
+      {
+        jobId: task._id.toString(), // use task ID as job ID for traceability
+      }
+    );
 
-          freshTask.status = "processing";
-          await freshTask.save();
+    console.log(`[API] Task ${task._id} (${taskType}) queued as Job #${job.id}`);
 
-          if (freshTask.taskType === "email") {
-            await emailWorker(freshTask);
-          } else if (freshTask.taskType === "image") {
-            await imageWorker(freshTask);
-          } else if (freshTask.taskType === "report") {
-            await reportWorker(freshTask);
-          }
-
-          freshTask.status = "completed";
-          await freshTask.save();
-
-        } catch (error) {
-          const freshTask = await Task.findById(task._id);
-          if (freshTask) {
-            await retryHandler(freshTask);
-          }
-        }
-      }, 1000);
-    }
-
+    // 3. Respond immediately — don't wait for processing
     res.status(201).json({
-      message: "Task Added Successfully",
+      message: "Task added to queue successfully",
       task,
+      jobId: job.id,
     });
 
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    console.error("[API] Create task error:", error.message);
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 
-// Get All Tasks
-
+// ─── GET /tasks — Get all tasks for logged-in user ───────────────────────────
 router.get("/tasks", verifyToken, async (req, res) => {
-
   try {
-
-    const tasks = await Task.find({ userId: req.user.id });
-
+    const tasks = await Task.find({ userId: req.user.id }).sort({ createdAt: -1 });
     res.json(tasks);
-
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 
-// Get Single Task
-
+// ─── GET /task/:id — Get single task ─────────────────────────────────────────
 router.get("/task/:id", verifyToken, async (req, res) => {
-
   try {
-
     const task = await Task.findById(req.params.id);
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
-
     if (task.userId.toString() !== req.user.id) {
       return res.status(403).json({ message: "Unauthorized access to task" });
     }
 
     res.json(task);
-
   } catch (error) {
-
-    res.status(500).json({
-      error: error.message,
-    });
-
+    res.status(500).json({ error: error.message });
   }
-
 });
 
 
-// Worker Processing
-
-if (useRedis && taskQueue) {
-  taskQueue.process(async (job) => {
-    const task = await Task.findById(job.data.taskId);
-    try {
-      task.status = "processing";
-      await task.save();
-
-      if (task.taskType === "email") {
-        await emailWorker(task);
-      } else if (task.taskType === "image") {
-        await imageWorker(task);
-      } else if (task.taskType === "report") {
-        await reportWorker(task);
-      }
-
-      task.status = "completed";
-      await task.save();
-    } catch (error) {
-      await retryHandler(task);
-    }
-  });
-}
-
-// Delete Task
+// ─── DELETE /task/:id — Delete a task ────────────────────────────────────────
 router.delete("/task/:id", verifyToken, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -231,10 +152,12 @@ router.delete("/task/:id", verifyToken, async (req, res) => {
   }
 });
 
-// Update Task
+
+// ─── PATCH /task/:id — Update a task ─────────────────────────────────────────
 router.patch("/task/:id", verifyToken, upload.single("image"), async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
+
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -260,14 +183,50 @@ router.patch("/task/:id", verifyToken, upload.single("image"), async (req, res) 
       updates.data = parsedData;
     }
 
+    // Reset status to pending and re-queue on edit
+    updates.status = "pending";
+    updates.retryCount = 0;
+
     const updated = await Task.findByIdAndUpdate(req.params.id, updates, { new: true });
+
     if (!updated) {
       return res.status(404).json({ message: "Task not found" });
     }
+
+    // Re-add to queue so worker re-processes the updated task
+    await taskQueue.add(
+      { taskId: updated._id.toString() },
+      { jobId: `${updated._id.toString()}-${Date.now()}` }
+    );
+    console.log(`[API] Task ${updated._id} updated and re-queued`);
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+// ─── GET /queue/status — Queue stats (bonus endpoint) ────────────────────────
+router.get("/queue/status", verifyToken, async (req, res) => {
+  try {
+    const [waiting, active, completed, failed, delayed] = await Promise.all([
+      taskQueue.getWaitingCount(),
+      taskQueue.getActiveCount(),
+      taskQueue.getCompletedCount(),
+      taskQueue.getFailedCount(),
+      taskQueue.getDelayedCount(),
+    ]);
+
+    res.json({
+      queue: "taskQueue",
+      broker: "Redis (Bull)",
+      counts: { waiting, active, completed, failed, delayed },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 export default router;

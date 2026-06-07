@@ -99,7 +99,7 @@ function EditTask() {
               <div className="mb-2">
                 <p className="text-sm text-zinc-500 mb-1">Current image:</p>
                 <img
-                  src={`http://localhost:5000${currentImage}`}
+                  src={`${import.meta.env.VITE_API_URL?.replace('/api','') || 'http://localhost:5000'}${currentImage}`}
                   alt="Current"
                   className="w-full max-h-48 object-contain rounded-lg border border-zinc-200"
                 />

@@ -1,0 +1,49 @@
+# render.yaml — Render.com Deployment Config
+# This deploys 3 services automatically:
+#   1. API Server  (web service)
+#   2. Worker Node (background worker)
+#
+# MongoDB Atlas and Upstash Redis must be set up separately.
+# Add their URLs as environment variables in the Render dashboard.
+
+services:
+  # ─── API Server ────────────────────────────────────────────────────────────
+  - type: web
+    name: task-queue-api
+    env: node
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false   # set manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false   # set manually in Render dashboard
+      - key: REDIS_URL
+        sync: false   # set manually (Upstash URL)
+      - key: ALLOWED_ORIGINS
+        sync: false   # set to your Vercel URL
+
+  # ─── Worker Node ───────────────────────────────────────────────────────────
+  - type: worker
+    name: task-queue-worker
+    env: node
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm run worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REDIS_URL
+        sync: false

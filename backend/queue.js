@@ -6,28 +6,23 @@ dotenv.config();
 let redisConfig;
 
 if (process.env.REDIS_URL) {
-  redisConfig = {
-    tls: {},
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    lazyConnect: true,
-    password: undefined,
-  };
+  const redisUrl = new URL(process.env.REDIS_URL);
 
-  redisConfig = process.env.REDIS_URL;
+  redisConfig = {
+    host: redisUrl.hostname,
+    port: Number(redisUrl.port) || 6379,
+    password: redisUrl.password,
+    tls: {},
+  };
 } else {
   redisConfig = {
     host: process.env.REDIS_HOST || "127.0.0.1",
-    port: parseInt(process.env.REDIS_PORT) || 6379,
+    port: Number(process.env.REDIS_PORT) || 6379,
   };
 }
 
 const taskQueue = new Bull("taskQueue", {
-  redis: process.env.REDIS_URL
-    ? {
-        url: process.env.REDIS_URL,
-        tls: {},
-      }
-    : redisConfig,
+  redis: redisConfig,
 });
+
 export default taskQueue;

@@ -41,8 +41,16 @@ app.get("/health", (req, res) => {
 });
 
 // MongoDB Connection
+if (!process.env.MONGO_URI) {
+  console.error("❌ ERROR: MONGO_URI is undefined!");
+  console.error("Here are the variables Render currently sees:");
+  console.error(Object.keys(process.env).filter(k => k.includes("MONGO") || k.includes("DB")));
+  console.error("Please fix your Render Environment Variables.");
+  process.exit(1);
+}
+
 mongoose
-  .connect(process.env.MONGO_URL)
+  .connect(process.env.MONGO_URI)
   .then(() => { 
     
     console.log("MongoDB Connected");
